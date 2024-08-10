@@ -32,6 +32,7 @@ import (
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/operators"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/params"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/annotations"
+	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/protocols"
 	"github.com/inspektor-gadget/inspektor-gadget/pkg/utils/syscalls"
 )
 
@@ -392,6 +393,20 @@ var replacers = []replacer{
 				return nil, fmt.Errorf("port size expected to be 2 bytes")
 			}
 
+			protos := in.GetSubFieldsWithTag("name:proto_raw")
+			if len(protos) != 1 {
+				return nil, fmt.Errorf("expected exactly 1 proto field")
+			}
+			if protos[0].Size() != 2 {
+				return nil, fmt.Errorf("proto size expected to be 2 bytes")
+			}
+
+			protoFieldName := strings.TrimSuffix(protos[0].Name(), "_raw")
+			protoField, err := in.AddSubField(protoFieldName, api.Kind_String)
+			if err != nil {
+				return nil, err
+			}
+
 			endpointF, err := in.AddSubField("endpoint", api.Kind_String,
 				datasource.WithAnnotations(map[string]string{
 					json.SkipFieldAnnotation: "true",
@@ -412,6 +427,14 @@ var replacers = []replacer{
 
 				port, _ := ports[0].Uint16(entry)
 				endpointF.PutString(entry, fmt.Sprintf("%s:%d", addrStr, port))
+
+				protoNumber, _ := protos[0].Uint16(entry)
+				protoName, exist := protocols.GetProtocolNameByNumber(int(protoNumber))
+				if !exist {
+					protoName = "unassigned"
+				}
+				protoField.PutString(entry, protoName)
+
 				return nil
 			}, nil
 		},

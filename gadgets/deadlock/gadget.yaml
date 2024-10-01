@@ -6,6 +6,8 @@ documentationURL: https://www.inspektor-gadget.io/docs/latest/gadgets/deadlock
 sourceURL: https://github.com/inspektor-gadget/inspektor-gadget/tree/main/gadgets/deadlock
 datasources:
   deadlock:
+    annotations:
+      cli.clear-screen-before: "true"
     fields:
       comm:
         annotations:
@@ -15,17 +17,16 @@ datasources:
         annotations:
           description: Mount namespace inode id
           template: ns
-      mutex_addr:
+      mutex1:
         annotations:
           columns.hex: "true"
           columns.width: "20"
-          description: address of mutex lock/unlock operations
-      operation:
+          description: address of the first mutex node
+      mutex2:
         annotations:
-          description: mutex operation type
-      operation_raw:
-        annotations:
-          columns.hidden: "true"
+          columns.hex: "true"
+          columns.width: "20"
+          description: address of second mutex node
       pid:
         annotations:
           description: Process ID
@@ -34,6 +35,12 @@ datasources:
         annotations:
           description: Thread ID
           template: pid
+      mutex1_stack_id:
+        annotations:
+          description: stack id when mutex1 was acquired
+      mutex2_stack_id:
+        annotations:
+          description: stack id when mutex2 was acquired
       timestamp:
         annotations:
           template: timestamp

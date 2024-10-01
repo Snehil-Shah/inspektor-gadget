@@ -38,34 +38,23 @@ To generate mutex lock/unlock events, you can run a `test` program in another co
 
 For this example, we use a [test C++ program](https://github.com/iovisor/bcc/blob/master/tools/deadlock_example.txt#L187) (from BCC) with lock inversions that can cause a potential deadlock.
 
-The deadlock gadget can trace all mutex lock/unlock events in the following way:
+The deadlock gadget traces all edges of the mutex wait directed graph and prints all potential deadlocks upon exiting the gadget:
 ```bash
 $ sudo ig run ghcr.io/inspektor-gadget/gadget/deadlock:%IG_TAG%
-RUNTIME.CONTAINERNAME      COMM                  PID        TID MUTEX_ADDR        OPERATION
-hungry_turing              test                23148      23148 0x7FED1243EA58    lock
-hungry_turing              test                23148      23148 0x7FED1243EA58    unlock
-hungry_turing              test                23148      23237 0x5612ABB33160    lock
-hungry_turing              test                23148      23237 0x5612ABB331A0    lock
-hungry_turing              test                23148      23237 0x5612ABB331A0    unlock
-hungry_turing              test                23148      23237 0x5612ABB33160    unlock
-hungry_turing              test                23148      23148 0x7FED1243EA58    lock
-hungry_turing              test                23148      23148 0x7FED1243EA58    unlock
-hungry_turing              test                23148      23239 0x5612ABB331A0    lock
-hungry_turing              test                23148      23239 0x5612ABB331E0    lock
-hungry_turing              test                23148      23239 0x5612ABB331E0    unlock
-hungry_turing              test                23148      23239 0x5612ABB331A0    unlock
-hungry_turing              test                23148      23148 0x7FED1243EA58    lock
-hungry_turing              test                23148      23148 0x7FED1243EA58    unlock
-hungry_turing              test                23148      23240 0x5612ABB331E0    lock
-hungry_turing              test                23148      23240 0x7FFDC68BEB80    lock
-hungry_turing              test                23148      23240 0x7FFDC68BEB80    unlock
-hungry_turing              test                23148      23240 0x5612ABB331E0    unlock
-hungry_turing              test                23148      23148 0x7FED1243EA58    lock
-hungry_turing              test                23148      23148 0x7FED1243EA58    unlock
-hungry_turing              test                23148      23241 0x7FFDC68BEB80    lock
-hungry_turing              test                23148      23241 0x5612ABB33160    lock
-hungry_turing              test                23148      23241 0x5612ABB33160    unlock
-hungry_turing              test                23148      23241 0x7FFDC68BEB80    unlock
-hungry_turing              test                23148      23148 0x7FED1243EA08    lock
-hungry_turing              test                23148      23148 0x7FED1243EA08    unlock
+RUNTIME.CONTAINERNAME               MUTEX1               MUTEX2                      TID        PID MUTEX1_STACK_ID    MUTEX2_STACK_ID    COMM
+peaceful_mcclintock                 0x55F80C3B01A0       0x55F80C3B01E0            40055      39930 169                58                 test
+peaceful_mcclintock                 0x55F80C3B0160       0x55F80C3B01A0            40054      39930 142                176                test
+peaceful_mcclintock                 0x55F80C3B01E0       0x7FFF502D6A60            40056      39930 49                 230                test
+peaceful_mcclintock                 0x7FFF502D6A60       0x55F80C3B0160            40057      39930 217                108                test
+^CINFO[0014] Potential deadlocks detected
+INFO[0014] Cycle 1:
+INFO[0014] Edge 1: 0x55F80C3B0160 -> 0x55F80C3B01A0
+INFO[0014] Edge 2: 0x55F80C3B01A0 -> 0x55F80C3B01E0
+INFO[0014] Edge 3: 0x55F80C3B01E0 -> 0x7FFF502D6A60
+INFO[0014] Edge 4: 0x7FFF502D6A60 -> 0x55F80C3B0160
 ```
+
+### Notes
+
+- This gadget detects "potential" deadlocks and not just actual deadlocks as a deadlock that didn't happen during the trace could happen in the future.
+A deadlock occurring depends on various factors such as thread scheduling and order of mutex acquisitions/releases, and hence it makes sense to report mutex lock order inversions as potentially unsafe resource management.
